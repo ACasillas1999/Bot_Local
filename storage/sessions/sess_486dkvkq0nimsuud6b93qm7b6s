@@ -1,0 +1,1 @@
+conversations|a:1:{s:8:"database";a:2:{i:0;a:2:{s:4:"role";s:4:"user";s:7:"content";s:34:"Esta activo el modo base de datos?";}i:1;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:86:"El modo base de datos esta desactivado. Configura `config/config.php` antes de usarlo.";s:4:"meta";a:2:{s:4:"mode";s:8:"database";s:10:"configured";b:0;}}}}

@@ -1,0 +1,45 @@
+schema_cache|a:1:{s:39:"schema:e22fa0fb4e1b945f64924656341d1b1f";s:1147:"Tabla asistencias
+- id (int, null: NO, key: PRI)
+- empleado_id (int, null: NO, key: MUL)
+- fecha (date, null: NO)
+- estado (enum, null: NO)
+- horas_trabajadas (decimal, null: NO)
+
+Tabla departamentos
+- id (int, null: NO, key: PRI)
+- nombre (varchar, null: NO)
+- responsable (varchar, null: NO)
+- presupuesto_anual (decimal, null: NO)
+
+Tabla empleados
+- id (int, null: NO, key: PRI)
+- nombre (varchar, null: NO)
+- apellido (varchar, null: NO)
+- email (varchar, null: NO)
+- ciudad (varchar, null: NO)
+- fecha_ingreso (date, null: NO)
+- salario_mensual (decimal, null: NO)
+- estatus (enum, null: NO)
+- departamento_id (int, null: NO, key: MUL)
+- puesto_id (int, null: NO, key: MUL)
+- manager_id (int, null: YES, key: MUL)
+
+Tabla puestos
+- id (int, null: NO, key: PRI)
+- nombre (varchar, null: NO)
+- nivel (varchar, null: NO)
+- salario_min (decimal, null: NO)
+- salario_max (decimal, null: NO)
+
+Tabla vacaciones
+- id (int, null: NO, key: PRI)
+- empleado_id (int, null: NO, key: MUL)
+- periodo_inicio (date, null: NO)
+- periodo_fin (date, null: NO)
+- dias_disponibles (int, null: NO)
+- dias_usados (int, null: NO)";}conversations|a:1:{s:8:"database";a:2:{i:0;a:2:{s:4:"role";s:4:"user";s:7:"content";s:39:"Cuantos empleados hay por departamento?";}i:1;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:201:"Por departamento, la cantidad de empleados es la siguiente:  
+- Finanzas: 2 empleados  
+- Operaciones: 2 empleados  
+- Recursos Humanos: 3 empleados  
+- Tecnología: 2 empleados  
+- Ventas: 2 empleados";s:4:"meta";a:5:{s:4:"mode";s:8:"database";s:10:"configured";b:1;s:6:"source";s:5:"query";s:3:"sql";s:124:"SELECT d.nombre, COUNT(e.id) AS cantidad FROM empleados e JOIN departamentos d ON e.departamento_id = d.id GROUP BY d.nombre";s:8:"rowCount";i:5;}}}}

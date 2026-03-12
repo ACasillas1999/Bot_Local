@@ -1,0 +1,47 @@
+conversations|a:2:{s:7:"general";a:16:{i:0;a:2:{s:4:"role";s:4:"user";s:7:"content";s:4:"hola";}i:1;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:37:"¡Hola! ¿En qué puedo ayudarte hoy?";s:4:"meta";a:1:{s:4:"mode";s:7:"general";}}i:2;a:2:{s:4:"role";s:4:"user";s:7:"content";s:19:"Como esta el clima?";}i:3;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:271:"No dispongo de datos en tiempo real, así que no puedo decirte el clima actual. Te recomiendo consultar una aplicación de meteorología o un sitio web como el Servicio Meteorológico Nacional, Weather.com o la app de tu móvil para obtener la información más reciente.";s:4:"meta";a:1:{s:4:"mode";s:7:"general";}}i:4;a:2:{s:4:"role";s:4:"user";s:7:"content";s:4:"Hola";}i:5;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:37:"¡Hola! ¿En qué puedo ayudarte hoy?";s:4:"meta";a:1:{s:4:"mode";s:7:"general";}}i:6;a:2:{s:4:"role";s:4:"user";s:7:"content";s:11:"Como estas?";}i:7;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:45:"¡Estoy bien, gracias! ¿Y tú, cómo estás?";s:4:"meta";a:1:{s:4:"mode";s:7:"general";}}i:8;a:2:{s:4:"role";s:4:"user";s:7:"content";s:24:"Este es tu mejor modelo?";}i:9;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:259:"Soy un modelo de lenguaje diseñado para ayudar con preguntas y tareas. No tengo versiones o "mejores modelos" en el sentido de diferentes iteraciones; simplemente estoy aquí para proporcionar respuestas basadas en mi entrenamiento. ¿En qué puedo ayudarte?";s:4:"meta";a:1:{s:4:"mode";s:7:"general";}}i:10;a:2:{s:4:"role";s:4:"user";s:7:"content";s:106:"Osea si te digo algo ahorita y no lo sabes lo aprendes y si en un mes te pregunto de nuevo ya vas a saber?";}i:11;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:436:"No, no aprendo ni guardo información de las conversaciones. Cada vez que interactúas conmigo, no tengo memoria de lo que hablamos antes. Si me preguntas algo que no sé hoy, no lo recordaré ni un mes después, porque no almaceno datos ni aprendo de las interacciones. Mi conocimiento está limitado a lo que aprendí durante mi entrenamiento (hasta 2024), y no me actualizo con nuevas preguntas. 😊 ¿Necesitas ayuda con algo más?";s:4:"meta";a:1:{s:4:"mode";s:7:"general";}}i:12;a:2:{s:4:"role";s:4:"user";s:7:"content";s:17:"Nada mas, gracias";}i:13;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:60:"De nada, ¡estoy aquí si necesitas ayuda en el futuro! 😊";s:4:"meta";a:1:{s:4:"mode";s:7:"general";}}i:14;a:2:{s:4:"role";s:4:"user";s:7:"content";s:29:"Puedes dar tablas y graficos?";}i:15;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:615:"Sí, puedo crear **tablas en formato de texto** (por ejemplo, usando markdown) para organizar información, pero **no puedo generar gráficos o imágenes** (como gráficos de barras, pastel, etc.). Si necesitas una tabla, dime los datos y te ayudaré a estructurarla. Por ejemplo:
+
+| Mes   | Ventas (USD) | Crecimiento |
+|-------|--------------|-------------|
+| Enero | 1,200        | +5%         |
+| Febrero| 1,500        | +10%        |
+
+Si quieres un gráfico, necesitarías usar una herramienta como Excel, Google Sheets o una aplicación de visualización de datos. ¿Necesitas ayuda con algo específico? 😊";s:4:"meta";a:1:{s:4:"mode";s:7:"general";}}}s:8:"database";a:6:{i:0;a:2:{s:4:"role";s:4:"user";s:7:"content";s:4:"Hola";}i:1;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:33:"¡Hola! ¿En qué puedo ayudarte?";s:4:"meta";a:3:{s:4:"mode";s:8:"database";s:10:"configured";b:1;s:6:"source";s:7:"planner";}}i:2;a:2:{s:4:"role";s:4:"user";s:7:"content";s:9:"Que paso?";}i:3;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:92:"Por favor, proporciona más detalles sobre lo que necesitas saber para poder ayudarte mejor.";s:4:"meta";a:3:{s:4:"mode";s:8:"database";s:10:"configured";b:1;s:6:"source";s:7:"planner";}}i:4;a:2:{s:4:"role";s:4:"user";s:7:"content";s:29:"Que informacion puedes darme?";}i:5;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:110:"Puedo proporcionar información sobre las tablas: asistencias, departamentos, empleados, puestos y vacaciones.";s:4:"meta";a:3:{s:4:"mode";s:8:"database";s:10:"configured";b:1;s:6:"source";s:7:"planner";}}}}schema_cache|a:1:{s:39:"schema:e22fa0fb4e1b945f64924656341d1b1f";s:1147:"Tabla asistencias
+- id (int, null: NO, key: PRI)
+- empleado_id (int, null: NO, key: MUL)
+- fecha (date, null: NO)
+- estado (enum, null: NO)
+- horas_trabajadas (decimal, null: NO)
+
+Tabla departamentos
+- id (int, null: NO, key: PRI)
+- nombre (varchar, null: NO)
+- responsable (varchar, null: NO)
+- presupuesto_anual (decimal, null: NO)
+
+Tabla empleados
+- id (int, null: NO, key: PRI)
+- nombre (varchar, null: NO)
+- apellido (varchar, null: NO)
+- email (varchar, null: NO)
+- ciudad (varchar, null: NO)
+- fecha_ingreso (date, null: NO)
+- salario_mensual (decimal, null: NO)
+- estatus (enum, null: NO)
+- departamento_id (int, null: NO, key: MUL)
+- puesto_id (int, null: NO, key: MUL)
+- manager_id (int, null: YES, key: MUL)
+
+Tabla puestos
+- id (int, null: NO, key: PRI)
+- nombre (varchar, null: NO)
+- nivel (varchar, null: NO)
+- salario_min (decimal, null: NO)
+- salario_max (decimal, null: NO)
+
+Tabla vacaciones
+- id (int, null: NO, key: PRI)
+- empleado_id (int, null: NO, key: MUL)
+- periodo_inicio (date, null: NO)
+- periodo_fin (date, null: NO)
+- dias_disponibles (int, null: NO)
+- dias_usados (int, null: NO)";}
