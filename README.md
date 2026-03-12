@@ -4,7 +4,7 @@ Chatbot local en PHP para XAMPP que usa Ollama como motor de IA y soporta tres m
 
 - Conversacion general con memoria en sesion.
 - Preguntas sobre un tema especifico usando archivos locales.
-- Preguntas sobre una base de datos MySQL en modo de solo lectura.
+- Preguntas sobre bases de datos en modo de solo lectura.
 
 ## Requisitos
 
@@ -57,13 +57,23 @@ Activa la configuracion en `config/config.php`:
 ```php
 'database' => [
     'enabled' => true,
+    'driver' => 'mysql', // mysql | pgsql | sqlite
     'host' => '127.0.0.1',
     'port' => 3306,
     'database' => 'tu_base',
+    'schema' => 'public', // usado en PostgreSQL
+    'sqlite_path' => '', // usado en SQLite
     'username' => 'root',
     'password' => '',
     'charset' => 'utf8mb4',
     'table_whitelist' => ['usuarios', 'ventas'],
+    'schema_max_tables' => 8,
+    'schema_max_columns_per_table' => 12,
+    'schema_include_related' => true,
+    'planner_history_messages' => 1,
+    'plan_cache_enabled' => true,
+    'planner_model' => 'gpt-oss:20b',
+    'use_llm_summary' => false,
     'max_rows' => 25,
 ]
 ```
@@ -72,7 +82,17 @@ Notas importantes:
 
 - El bot solo acepta consultas `SELECT` o `WITH`.
 - Si defines `table_whitelist`, el modelo solo vera esas tablas en el esquema.
+- El backend ya soporta `MySQL`, `PostgreSQL` y `SQLite`.
+- Para bases grandes, no envia todo el esquema al modelo: selecciona solo las tablas mas relevantes para la pregunta.
+- Tambien puede cachear el plan SQL de preguntas repetidas para responder mucho mas rapido en consultas similares.
 - La respuesta final se basa en los resultados devueltos por la consulta.
+- Para acelerar el modo DB, la configuracion actual usa `gpt-oss:20b` solo como planner SQL y resume resultados en PHP sin una segunda llamada al LLM.
+
+Ejemplos de driver:
+
+- MySQL/MariaDB: usa `driver => 'mysql'`, `host`, `port`, `database`, `username`, `password`.
+- PostgreSQL: usa `driver => 'pgsql'`, `host`, `port`, `database`, `schema`, `username`, `password`.
+- SQLite: usa `driver => 'sqlite'` y `sqlite_path`.
 
 ## Base de prueba RH
 

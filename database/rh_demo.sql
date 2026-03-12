@@ -29,6 +29,10 @@ CREATE TABLE empleados (
     departamento_id INT NOT NULL,
     puesto_id INT NOT NULL,
     manager_id INT NULL,
+    KEY idx_empleados_departamento (departamento_id),
+    KEY idx_empleados_puesto (puesto_id),
+    KEY idx_empleados_manager (manager_id),
+    KEY idx_empleados_estatus (estatus),
     FOREIGN KEY (departamento_id) REFERENCES departamentos(id),
     FOREIGN KEY (puesto_id) REFERENCES puestos(id),
     FOREIGN KEY (manager_id) REFERENCES empleados(id)
@@ -41,6 +45,8 @@ CREATE TABLE vacaciones (
     periodo_fin DATE NOT NULL,
     dias_disponibles INT NOT NULL,
     dias_usados INT NOT NULL,
+    KEY idx_vacaciones_empleado (empleado_id),
+    KEY idx_vacaciones_periodo (periodo_inicio, periodo_fin),
     FOREIGN KEY (empleado_id) REFERENCES empleados(id)
 );
 
@@ -50,6 +56,8 @@ CREATE TABLE asistencias (
     fecha DATE NOT NULL,
     estado ENUM('Presente', 'Retardo', 'Falta', 'Home Office') NOT NULL,
     horas_trabajadas DECIMAL(4,2) NOT NULL,
+    KEY idx_asistencias_empleado_fecha (empleado_id, fecha),
+    KEY idx_asistencias_estado_fecha (estado, fecha),
     FOREIGN KEY (empleado_id) REFERENCES empleados(id)
 );
 

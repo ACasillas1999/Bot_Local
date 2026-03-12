@@ -1,0 +1,17 @@
+{
+    "e4e41a57e9aefabaa1c20e0e0ee44f9e8e9e6ba8": {
+        "action": "query",
+        "sql": "SELECT d.id AS departamento_id, d.nombre AS departamento_nombre, COUNT(e.id) AS numero_empleados\nFROM departamentos d\nLEFT JOIN empleados e ON e.departamento_id = d.id\nGROUP BY d.id, d.nombre\nORDER BY d.id;",
+        "answer": ""
+    },
+    "2b62222935314a12e0b2399aa3ff68b958942acf": {
+        "action": "query",
+        "sql": "SELECT COUNT(*) AS total_empleados, GROUP_CONCAT(CONCAT(e.nombre, ' ', e.apellido) SEPARATOR ', ') AS nombres FROM empleados e JOIN departamentos d ON e.departamento_id = d.id WHERE d.nombre LIKE '%Tecnologia%' OR d.nombre LIKE '%Tecnología%';",
+        "answer": ""
+    },
+    "c0eb13cf2852fc08497cda5fb71a0641cc933bd3": {
+        "action": "query",
+        "sql": "SELECT e.nombre, e.apellido, e.salario_mensual AS sueldo\nFROM empleados e\nJOIN departamentos d ON e.departamento_id = d.id\nWHERE d.nombre = 'Tecnología';",
+        "answer": "Consulta preparada para obtener el nombre y sueldo de los empleados del departamento de Tecnología."
+    }
+}

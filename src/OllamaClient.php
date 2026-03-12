@@ -19,10 +19,10 @@ final class OllamaClient
     /**
      * @param array<int, array{role: string, content: string}> $messages
      */
-    public function chat(array $messages, ?float $temperature = null): string
+    public function chat(array $messages, ?float $temperature = null, ?string $model = null): string
     {
         $payload = [
-            'model' => $this->model,
+            'model' => $model ?? $this->model,
             'stream' => false,
             'messages' => $messages,
             'options' => [
