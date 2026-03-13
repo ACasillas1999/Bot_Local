@@ -27,10 +27,6 @@ require_once __DIR__ . '/bootstrap.php';
                     Chatbot local con Ollama
                 </p>
                 <h1><?= htmlspecialchars((string) app_config('app.name')) ?></h1>
-                <p class="lede">
-                    Conversa con un modelo local, cambia a modo temático usando archivos propios
-                    y activa consultas seguras sobre tu base de datos.
-                </p>
             </div>
 
             <div class="sidebar-stack">

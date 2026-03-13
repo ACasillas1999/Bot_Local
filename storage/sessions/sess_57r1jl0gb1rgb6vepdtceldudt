@@ -99,9 +99,24 @@ Tambien dame sus nombres
 - nombre: Elena, apellido: Torres, sueldo: 39000.00";s:4:"meta";a:11:{s:4:"mode";s:8:"database";s:10:"configured";b:1;s:6:"source";s:5:"query";s:13:"summarySource";s:3:"php";s:6:"driver";s:5:"mysql";s:7:"dialect";s:5:"MySQL";s:16:"schemaTablesUsed";i:5;s:16:"schemaTableCount";i:5;s:12:"planCacheHit";b:0;s:3:"sql";s:153:"SELECT e.nombre, e.apellido, e.salario_mensual AS sueldo
 FROM empleados e
 JOIN departamentos d ON e.departamento_id = d.id
-WHERE d.nombre = 'Tecnología'";s:8:"rowCount";i:2;}}}s:5:"topic";a:2:{i:0;a:2:{s:4:"role";s:4:"user";s:7:"content";s:33:"Cuales son los temas especificos?";}i:1;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:563:"Los temas específicos no están definidos en el contexto proporcionado. El archivo `topic.md` menciona que debe contener información sobre el tema para el que se quiere que responda el bot, pero actualmente está vacío (solo es un placeholder con el mensaje "Coloca aqui la informacion del tema..."). 
+WHERE d.nombre = 'Tecnología'";s:8:"rowCount";i:2;}}}s:5:"topic";a:6:{i:0;a:2:{s:4:"role";s:4:"user";s:7:"content";s:33:"Cuales son los temas especificos?";}i:1;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:563:"Los temas específicos no están definidos en el contexto proporcionado. El archivo `topic.md` menciona que debe contener información sobre el tema para el que se quiere que responda el bot, pero actualmente está vacío (solo es un placeholder con el mensaje "Coloca aqui la informacion del tema..."). 
 
-No puedo listar temas específicos porque no hay datos adicionales en el contexto. Si necesitas información sobre un tema concreto, por favor proporciona más detalles o verifica si el documento `topic.md` ha sido actualizado con la información relevante.";s:4:"meta";a:1:{s:4:"mode";s:5:"topic";}}}}schema_cache|a:2:{s:39:"schema:e22fa0fb4e1b945f64924656341d1b1f";s:1147:"Tabla asistencias
+No puedo listar temas específicos porque no hay datos adicionales en el contexto. Si necesitas información sobre un tema concreto, por favor proporciona más detalles o verifica si el documento `topic.md` ha sido actualizado con la información relevante.";s:4:"meta";a:1:{s:4:"mode";s:5:"topic";}}i:2;a:2:{s:4:"role";s:4:"user";s:7:"content";s:41:"Ahora si, con que temas me puedes ayudar?";}i:3;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:412:"Puedo ayudarte con los siguientes temas, basados en el manual interno de Recursos Humanos:
+
+- **Horario de atención RH**  
+- **Políticas de vacaciones**  
+- **Permisos y ausencias**  
+- **Reclutamiento y altas**  
+- **Capacitación**  
+- **Preguntas frecuentes**  
+
+Si necesitas información sobre alguno de estos temas, por favor formula tu pregunta y te responderé con los datos del documento proporcionado.";s:4:"meta";a:1:{s:4:"mode";s:5:"topic";}}i:4;a:2:{s:4:"role";s:4:"user";s:7:"content";s:31:"Soy nuevo y me perdi, que hago?";}i:5;a:3:{s:4:"role";s:9:"assistant";s:7:"content";s:315:"Como nuevo colaborador, debes completar la **inducción institucional** en tu primera semana, según el manual de Recursos Humanos. 
+
+Para más información o ayuda, puedes contactar a RH:
+- Correo: rh@empresa.local
+- Extensión interna: 204
+
+El horario de atención de RH es de **lunes a viernes de 9:00 a 17:30**.";s:4:"meta";a:1:{s:4:"mode";s:5:"topic";}}}}schema_cache|a:2:{s:39:"schema:e22fa0fb4e1b945f64924656341d1b1f";s:1147:"Tabla asistencias
 - id (int, null: NO, key: PRI)
 - empleado_id (int, null: NO, key: MUL)
 - fecha (date, null: NO)
