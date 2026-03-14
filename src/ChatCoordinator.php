@@ -110,7 +110,7 @@ Si no estas seguro, dilo de forma explicita.
 PROMPT;
 
         if ($mode === 'topic') {
-            $context = $this->knowledgeBase->buildContext();
+            $context = $this->knowledgeBase->buildContextForQuestion($message, $history);
 
             if ($context === '') {
                 return $basePrompt . "\n\nNo hay documentos cargados. Indica al usuario que agregue archivos en la carpeta `knowledge/`.";

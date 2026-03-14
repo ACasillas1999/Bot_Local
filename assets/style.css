@@ -1,4 +1,6 @@
 :root {
+  --font-body: "Trebuchet MS", "Segoe UI", sans-serif;
+  --font-display: "Segoe UI Variable Display", "Trebuchet MS", sans-serif;
   /* Fondo Oscuro Elegante */
   --bg: #0f172a;
   /* Fondo principal muy oscuro */
@@ -16,6 +18,7 @@
   /* Paneles semitransparentes */
   --panel-strong: rgba(15, 23, 42, 0.6);
   /* Fondos de input */
+  --input: rgba(15, 23, 42, 0.8);
 
   /* Bordes sutiles */
   --line: rgba(255, 255, 255, 0.1);
@@ -47,7 +50,7 @@ body {
   margin: 0;
   min-height: 100vh;
   /* Cambio de fuente a Inter / Outfit o Sans serif moderno */
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body);
   color: var(--ink);
   overflow: hidden;
   background-color: var(--bg);
@@ -225,6 +228,12 @@ body::before {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.custom-option:focus-visible,
+.custom-select-trigger:focus-visible {
+  outline: 2px solid rgba(139, 92, 246, 0.7);
+  outline-offset: 2px;
+}
+
 .custom-option.selected {
   background: rgba(139, 92, 246, 0.15);
   color: var(--brand);
@@ -251,7 +260,7 @@ body::before {
 
 h1,
 h2 {
-  font-family: 'Outfit', 'Inter', sans-serif;
+  font-family: var(--font-display);
   font-weight: 700;
   margin: 0;
   letter-spacing: -0.02em;
@@ -487,6 +496,49 @@ select option {
   font-size: 0.95rem;
 }
 
+.message-body.markdown-body {
+  white-space: normal;
+}
+
+.message-body.markdown-body p {
+  margin-top: 0;
+  margin-bottom: 0.75em;
+}
+
+.message-body.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.message-body.markdown-body pre {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: monospace;
+  font-size: 0.85em;
+  margin: 10px 0;
+}
+
+.message-body.markdown-body code {
+  font-family: monospace;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.message-body.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.message-body.markdown-body ul, 
+.message-body.markdown-body ol {
+  margin-top: 0;
+  margin-bottom: 0.75em;
+  padding-left: 20px;
+}
+
 .message-meta {
   position: absolute;
   top: 16px;
@@ -500,7 +552,7 @@ select option {
 }
 
 .meta-badge {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;

@@ -41,7 +41,7 @@ final class PostgresAdapter extends AbstractDatabaseAdapter
 
         $pdo = $this->createPdo($dsn, $config);
         $schema = (string) ($config['schema'] ?? 'public');
-        $pdo->exec("SET search_path TO {$schema}");
+        $pdo->exec('SET search_path TO ' . $this->quoteIdentifier($schema));
 
         return $pdo;
     }
@@ -171,5 +171,14 @@ final class PostgresAdapter extends AbstractDatabaseAdapter
             'schema' => $config['schema'] ?? 'public',
             'whitelist' => $config['table_whitelist'] ?? [],
         ], JSON_THROW_ON_ERROR);
+    }
+
+    private function quoteIdentifier(string $identifier): string
+    {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $identifier)) {
+            throw new RuntimeException('El schema configurado para PostgreSQL no es valido.');
+        }
+
+        return '"' . $identifier . '"';
     }
 }

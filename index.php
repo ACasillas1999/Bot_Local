@@ -10,10 +10,6 @@ require_once __DIR__ . '/bootstrap.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars((string) app_config('app.name')) ?></title>
-    <!-- Google Fonts: Inter & Outfit -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -24,7 +20,7 @@ require_once __DIR__ . '/bootstrap.php';
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
                     </svg>
-                    Chatbot local con Ollama
+                    Chatbot local
                 </p>
                 <h1><?= htmlspecialchars((string) app_config('app.name')) ?></h1>
             </div>
@@ -39,23 +35,23 @@ require_once __DIR__ . '/bootstrap.php';
                             <option value="database">Base de datos</option>
                         </select>
                         <div class="custom-select" id="custom-mode">
-                            <div class="custom-select-trigger">
+                            <div class="custom-select-trigger" role="button" tabindex="0" aria-haspopup="listbox" aria-expanded="false" aria-controls="custom-mode-options">
                                 <span class="custom-select-icon">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                                 </span>
                                 <span class="custom-select-text">Conversación general</span>
                                 <svg class="custom-select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                             </div>
-                            <div class="custom-select-options">
-                                <div class="custom-option selected" data-value="general">
+                            <div class="custom-select-options" id="custom-mode-options" role="listbox">
+                                <div class="custom-option selected" data-value="general" role="option" tabindex="-1" aria-selected="true">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                                     Conversación general
                                 </div>
-                                <div class="custom-option" data-value="topic">
+                                <div class="custom-option" data-value="topic" role="option" tabindex="-1" aria-selected="false">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                                     Tema específico
                                 </div>
-                                <div class="custom-option" data-value="database">
+                                <div class="custom-option" data-value="database" role="option" tabindex="-1" aria-selected="false">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
                                     Base de datos
                                 </div>
@@ -90,8 +86,8 @@ require_once __DIR__ . '/bootstrap.php';
                 <div class="panel panel-note">
                     <p class="label">Cómo funciona</p>
                     <p><code>Conversación general</code> usa solo Ollama y memoria.</p>
-                    <p><code>Tema específico</code> lee `.md`, `.txt`, `.csv` y `.xlsx` en knowledge/.</p>
-                    <p><code>Base de datos</code> genera consultas de solo lectura.</p>
+                    <p><code>Tema específico</code> recupera fragmentos relevantes de `.md`, `.txt`, `.csv` y `.xlsx` en `knowledge/`.</p>
+                    <p><code>Base de datos</code> genera consultas de solo lectura con validación adicional.</p>
                 </div>
             </div>
         </aside>
@@ -100,7 +96,7 @@ require_once __DIR__ . '/bootstrap.php';
             <div class="toolbar">
                 <div>
                     <h2 id="mode-title">Conversación general</h2>
-                    <p id="mode-description">Memoria de sesion activa con el modelo local.</p>
+                    <p id="mode-description">Memoria de sesión activa con el modelo local.</p>
                 </div>
                 <button id="reset-chat" type="button" title="Limpiar chat">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
@@ -113,7 +109,7 @@ require_once __DIR__ . '/bootstrap.php';
                 <label class="sr-only" for="prompt">Mensaje</label>
                 <textarea id="prompt" rows="3" placeholder="Escribe tu mensaje..."></textarea>
                 <div class="composer-actions">
-                    <small id="hint">Enter envia. Shift+Enter agrega salto.</small>
+                    <small id="hint">Enter envía. Shift+Enter agrega salto.</small>
                     <button id="send-button" type="submit">Enviar</button>
                 </div>
             </form>

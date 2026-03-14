@@ -9,10 +9,18 @@ use BotLocal\Database\DatabaseAdapterInterface;
 use BotLocal\Database\SchemaSelector;
 use PDO;
 use RuntimeException;
+use Throwable;
 
 final class DatabaseAssistant
 {
     private const PLAN_CACHE_FILE = __DIR__ . '/../storage/cache/sql_plan_cache.json';
+    private const DANGEROUS_FUNCTIONS = [
+        'sleep',
+        'benchmark',
+        'pg_sleep',
+        'load_file',
+        'xp_cmdshell',
+    ];
 
     private ?PDO $pdo = null;
     private readonly DatabaseAdapterInterface $adapter;
@@ -42,7 +50,7 @@ final class DatabaseAssistant
     {
         if (!$this->isConfigured()) {
             return [
-                'reply' => 'El modo base de datos esta desactivado o incompleto. Revisa `config/config.php`.',
+                'reply' => 'El modo base de datos esta desactivado o incompleto. Revisa `config/config.local.php` o `config/config.php`.',
                 'meta' => ['mode' => 'database', 'configured' => false],
             ];
         }
@@ -73,7 +81,7 @@ final class DatabaseAssistant
             ];
         }
 
-        $sql = $this->sanitizeSql((string) ($plan['sql'] ?? ''));
+        $sql = $this->guardSql((string) ($plan['sql'] ?? ''), $relevantSchema);
         $rows = $this->runReadOnlyQuery($sql);
         $summarySource = 'php';
         $answer = $this->formatRowsAsAnswer($question, $rows);
@@ -145,19 +153,44 @@ final class DatabaseAssistant
      */
     private function runReadOnlyQuery(string $sql): array
     {
-        $statement = $this->getPdo()->query($sql);
+        $pdo = $this->getPdo();
         $rows = [];
-        $maxRows = (int) ($this->config['max_rows'] ?? 25);
+        $maxRows = max(1, (int) ($this->config['max_rows'] ?? 25));
+        $driver = $this->adapter->getDriver();
+        $timeoutMs = max(1000, (int) ($this->config['query_timeout_ms'] ?? 5000));
 
-        while (($row = $statement->fetch()) !== false) {
-            $rows[] = $row;
+        $this->beginGuardedQuery($pdo, $driver, $timeoutMs);
 
-            if (count($rows) >= $maxRows) {
-                break;
+        try {
+            $statement = $pdo->query($sql);
+
+            while (($row = $statement->fetch()) !== false) {
+                $rows[] = $row;
+
+                if (count($rows) >= $maxRows) {
+                    break;
+                }
             }
+
+            $this->finishGuardedQuery($pdo, $driver, true);
+        } catch (Throwable $exception) {
+            $this->finishGuardedQuery($pdo, $driver, false);
+            throw new RuntimeException('No se pudo ejecutar la consulta segura: ' . $exception->getMessage(), 0, $exception);
         }
 
         return $rows;
+    }
+
+    /**
+     * @param array{tables: array<string, array<string, mixed>>, stats: array<string, int>} $relevantSchema
+     */
+    private function guardSql(string $sql, array $relevantSchema): string
+    {
+        $sql = $this->sanitizeSql($sql);
+        $this->rejectDangerousFunctions($sql);
+        $this->ensureQueryUsesAllowedTables($sql, array_keys($relevantSchema['tables'] ?? []));
+
+        return $this->applyLimit($sql);
     }
 
     private function sanitizeSql(string $sql): string
@@ -175,7 +208,11 @@ final class DatabaseAssistant
             throw new RuntimeException('Solo se permiten consultas SELECT o WITH.');
         }
 
-        if (preg_match('/\b(insert|update|delete|drop|alter|truncate|create|replace|grant|revoke|call|handler|load|outfile|infile|set|use|attach|detach|copy|vacuum)\b/i', $sql)) {
+        if (preg_match('/(--|\/\*|\*\/|#)/', $sql)) {
+            throw new RuntimeException('No se permiten comentarios SQL en la consulta generada.');
+        }
+
+        if (preg_match('/\b(insert|update|delete|drop|alter|truncate|create|replace|grant|revoke|call|handler|load|outfile|infile|set|use|attach|detach|copy|vacuum|analyze|explain)\b/i', $sql)) {
             throw new RuntimeException('La consulta propuesta no es de solo lectura.');
         }
 
@@ -184,6 +221,144 @@ final class DatabaseAssistant
         }
 
         return $sql;
+    }
+
+    private function rejectDangerousFunctions(string $sql): void
+    {
+        $normalized = $this->stripQuotedStrings($sql);
+
+        foreach (self::DANGEROUS_FUNCTIONS as $function) {
+            if (preg_match('/\b' . preg_quote($function, '/') . '\s*\(/i', $normalized)) {
+                throw new RuntimeException("La consulta usa una funcion bloqueada: {$function}.");
+            }
+        }
+    }
+
+    /**
+     * @param array<int, string> $allowedTables
+     */
+    private function ensureQueryUsesAllowedTables(string $sql, array $allowedTables): void
+    {
+        if ($allowedTables === []) {
+            throw new RuntimeException('No hay tablas visibles disponibles para la consulta.');
+        }
+
+        $allowed = array_fill_keys(array_map(static fn (string $table): string => strtolower($table), $allowedTables), true);
+        $cteNames = $this->extractCteNames($sql);
+
+        foreach ($this->extractReferencedTables($sql) as $tableName) {
+            if (isset($allowed[$tableName]) || isset($cteNames[$tableName])) {
+                continue;
+            }
+
+            throw new RuntimeException("La consulta intenta usar una tabla fuera del esquema permitido: {$tableName}.");
+        }
+    }
+
+    private function applyLimit(string $sql): string
+    {
+        if (!(bool) ($this->config['enforce_limit'] ?? true)) {
+            return $sql;
+        }
+
+        if (preg_match('/\blimit\s+\d+\b/i', $sql) || preg_match('/\bfetch\s+first\s+\d+\s+rows\s+only\b/i', $sql)) {
+            return $sql;
+        }
+
+        return $sql . ' LIMIT ' . max(1, (int) ($this->config['max_rows'] ?? 25));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function extractReferencedTables(string $sql): array
+    {
+        $normalized = $this->stripQuotedStrings($sql);
+        $matches = [];
+        preg_match_all('/\b(?:from|join)\s+((?:[`"\[]?[a-zA-Z0-9_]+[`"\]]?\.)?[`"\[]?[a-zA-Z0-9_]+[`"\]]?)/i', $normalized, $matches);
+        $tables = [];
+
+        foreach ($matches[1] ?? [] as $match) {
+            $table = $this->normalizeIdentifier((string) $match);
+
+            if ($table !== '') {
+                $tables[] = $table;
+            }
+        }
+
+        return array_values(array_unique($tables));
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    private function extractCteNames(string $sql): array
+    {
+        $normalized = $this->stripQuotedStrings($sql);
+        $matches = [];
+        preg_match_all('/\b([a-zA-Z_][a-zA-Z0-9_]*)\s+as\s*\(/i', $normalized, $matches);
+        $ctes = [];
+
+        foreach ($matches[1] ?? [] as $match) {
+            $ctes[strtolower((string) $match)] = true;
+        }
+
+        return $ctes;
+    }
+
+    private function normalizeIdentifier(string $identifier): string
+    {
+        $parts = explode('.', str_replace(['[', ']', '`', '"'], '', trim($identifier)));
+        $name = strtolower(trim((string) end($parts)));
+
+        return preg_match('/^[a-z_][a-z0-9_]*$/', $name) ? $name : '';
+    }
+
+    private function stripQuotedStrings(string $sql): string
+    {
+        $sql = preg_replace("/'(?:''|[^'])*'/", "''", $sql) ?? $sql;
+
+        return preg_replace('/"(?:\\"|[^"])*"/', '""', $sql) ?? $sql;
+    }
+
+    private function beginGuardedQuery(PDO $pdo, string $driver, int $timeoutMs): void
+    {
+        match ($driver) {
+            'mysql' => $this->beginMysqlReadOnlyQuery($pdo, $timeoutMs),
+            'pgsql' => $this->beginPostgresReadOnlyQuery($pdo, $timeoutMs),
+            'sqlite' => $this->beginSqliteReadOnlyQuery($pdo, $timeoutMs),
+            default => null,
+        };
+    }
+
+    private function finishGuardedQuery(PDO $pdo, string $driver, bool $success): void
+    {
+        if (!in_array($driver, ['mysql', 'pgsql'], true)) {
+            return;
+        }
+
+        try {
+            $pdo->exec($success ? 'COMMIT' : 'ROLLBACK');
+        } catch (Throwable) {
+        }
+    }
+
+    private function beginMysqlReadOnlyQuery(PDO $pdo, int $timeoutMs): void
+    {
+        $pdo->exec('SET SESSION max_execution_time = ' . $timeoutMs);
+        $pdo->exec('START TRANSACTION READ ONLY');
+    }
+
+    private function beginPostgresReadOnlyQuery(PDO $pdo, int $timeoutMs): void
+    {
+        $pdo->exec('BEGIN READ ONLY');
+        $pdo->exec('SET LOCAL statement_timeout = ' . $timeoutMs);
+    }
+
+    private function beginSqliteReadOnlyQuery(PDO $pdo, int $timeoutMs): void
+    {
+        $pdo->exec('PRAGMA busy_timeout = ' . $timeoutMs);
+        $pdo->exec('PRAGMA query_only = ON');
     }
 
     /**
@@ -213,6 +388,7 @@ final class DatabaseAssistant
         $relevantContext = $this->renderSchemaContext($relevantSchema);
         $fullTableCount = (int) ($fullSchema['stats']['tableCount'] ?? 0);
         $usedTableCount = count($relevantSchema['tables'] ?? []);
+        $maxRows = max(1, (int) ($this->config['max_rows'] ?? 25));
 
         return <<<PROMPT
 Eres un asistente que convierte preguntas de negocio en SQL {$this->adapter->getDialectLabel()} seguro.
@@ -222,6 +398,7 @@ Resumen:
 - Motor SQL: {$this->adapter->getDialectLabel()}
 - Tablas visibles para esta pregunta: {$usedTableCount}
 - Tablas totales en la base: {$fullTableCount}
+- Filas maximas esperadas: {$maxRows}
 
 Esquema relevante:
 
@@ -233,6 +410,7 @@ Reglas obligatorias:
 - Si necesitas datos, usa action "query" y genera una sola consulta de solo lectura.
 - Solo puedes usar SELECT o WITH.
 - Nunca inventes columnas o tablas fuera del esquema visible.
+- Evita funciones costosas o no deterministas.
 - Si la pregunta no requiere consultar datos, usa action "answer" y responde en "answer".
 - Prefiere consultas simples y claras.
 - Si el esquema visible no basta, responde con action "answer" indicando que falta contexto.
@@ -292,7 +470,7 @@ PROMPT;
         }
 
         if ($lines === []) {
-            return "La consulta devolvio filas, pero sin datos legibles para resumir.";
+            return 'La consulta devolvio filas, pero sin datos legibles para resumir.';
         }
 
         return "Resultados para: {$question}\n" . implode("\n", $lines);
@@ -455,7 +633,7 @@ PROMPT;
             'driver' => $this->adapter->getDriver(),
             'question' => $this->normalizeForCache($question),
             'history' => $historyText,
-            'tables' => array_keys($relevantSchema['tables'] ?? []),
+            'schema' => $this->schemaFingerprint($relevantSchema),
         ], JSON_THROW_ON_ERROR));
     }
 
@@ -467,6 +645,30 @@ PROMPT;
         $normalized = preg_replace('/\s+/', ' ', $normalized) ?? $normalized;
 
         return trim($normalized);
+    }
+
+    /**
+     * @param array{tables: array<string, array<string, mixed>>, stats: array<string, int>} $schema
+     */
+    private function schemaFingerprint(array $schema): string
+    {
+        $tables = [];
+
+        foreach (($schema['tables'] ?? []) as $tableName => $table) {
+            $tables[$tableName] = [
+                'columns' => array_map(
+                    static fn (array $column): array => [
+                        'name' => (string) ($column['name'] ?? ''),
+                        'type' => (string) ($column['type'] ?? ''),
+                        'key' => (string) ($column['key'] ?? ''),
+                    ],
+                    $table['columns'] ?? []
+                ),
+                'foreign_keys' => $table['foreign_keys'] ?? [],
+            ];
+        }
+
+        return sha1(json_encode($tables, JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -493,14 +695,20 @@ PROMPT;
 
         $directory = dirname(self::PLAN_CACHE_FILE);
 
-        if (!is_dir($directory)) {
-            mkdir($directory, 0777, true);
+        if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
+            return;
         }
 
-        file_put_contents(
-            self::PLAN_CACHE_FILE,
-            json_encode($cache, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)
-        );
+        $payload = json_encode($cache, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        $tempFile = self::PLAN_CACHE_FILE . '.tmp';
+
+        file_put_contents($tempFile, $payload, LOCK_EX);
+
+        if (is_file(self::PLAN_CACHE_FILE)) {
+            unlink(self::PLAN_CACHE_FILE);
+        }
+
+        rename($tempFile, self::PLAN_CACHE_FILE);
     }
 
     /**

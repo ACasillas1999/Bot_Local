@@ -20,11 +20,12 @@ Chatbot local en PHP para XAMPP que usa Ollama como motor de IA y soporta tres m
 - `api/reset.php`: limpia la conversacion de un modo.
 - `src/`: clases del backend.
 - `knowledge/`: documentos usados por el modo tematico.
-- `config/config.php`: configuracion principal.
+- `config/config.example.php`: base versionada.
+- `config/config.local.php`: override local recomendado.
 
 ## Configuracion basica
 
-Edita `config/config.php` si quieres cambiar el modelo o la URL de Ollama:
+Copia `config/config.local.php.example` a `config/config.local.php` si quieres cambiar el modelo o la URL de Ollama:
 
 ```php
 'app' => [
@@ -35,7 +36,7 @@ Edita `config/config.php` si quieres cambiar el modelo o la URL de Ollama:
 
 ## Modo tema especifico
 
-Agrega archivos `.md`, `.txt`, `.csv` o `.xlsx` dentro de `knowledge/`. El bot los cargara como contexto base.
+Agrega archivos `.md`, `.txt`, `.csv` o `.xlsx` dentro de `knowledge/`. El bot los indexara por fragmentos y recuperara los mas relevantes por pregunta.
 
 Ejemplos:
 
@@ -52,7 +53,7 @@ Notas sobre archivos tabulares:
 
 ## Modo base de datos
 
-Activa la configuracion en `config/config.php`:
+Activa la configuracion en `config/config.local.php`:
 
 ```php
 'database' => [
@@ -75,12 +76,15 @@ Activa la configuracion en `config/config.php`:
     'planner_model' => 'gpt-oss:20b',
     'use_llm_summary' => false,
     'max_rows' => 25,
+    'query_timeout_ms' => 5000,
+    'enforce_limit' => true,
 ]
 ```
 
 Notas importantes:
 
 - El bot solo acepta consultas `SELECT` o `WITH`.
+- El backend agrega `LIMIT` cuando falta y bloquea funciones SQL peligrosas.
 - Si defines `table_whitelist`, el modelo solo vera esas tablas en el esquema.
 - El backend ya soporta `MySQL`, `PostgreSQL` y `SQLite`.
 - Para bases grandes, no envia todo el esquema al modelo: selecciona solo las tablas mas relevantes para la pregunta.
@@ -106,7 +110,7 @@ Incluye tablas de:
 - `vacaciones`
 - `asistencias`
 
-La configuracion actual de `config/config.php` ya apunta a `botlocal_rh_demo`.
+La configuracion actual de `config/config.php` ya apunta a `botlocal_rh_demo`, pero para entornos reales conviene mover credenciales a `config/config.local.php`.
 
 Para recrearla localmente:
 

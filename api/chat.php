@@ -2,10 +2,7 @@
 
 declare(strict_types=1);
 
-use BotLocal\ChatCoordinator;
-use BotLocal\DatabaseAssistant;
-use BotLocal\KnowledgeBase;
-use BotLocal\OllamaClient;
+use BotLocal\AppServices;
 
 require_once dirname(__DIR__) . '/bootstrap.php';
 
@@ -31,19 +28,14 @@ try {
         throw new RuntimeException('El mensaje no puede estar vacio.');
     }
 
-    $ollama = new OllamaClient(
-        (string) app_config('app.ollama_url'),
-        (string) app_config('app.model'),
-        (float) app_config('app.temperature'),
-        (int) app_config('app.request_timeout')
-    );
+    $maxMessageChars = max(1, (int) app_config('app.max_message_chars', 4000));
 
-    $coordinator = new ChatCoordinator(
-        $ollama,
-        new KnowledgeBase((string) app_config('knowledge.path'), (int) app_config('knowledge.max_chars')),
-        new DatabaseAssistant((array) app_config('database'), $ollama),
-        (int) app_config('app.history_limit')
-    );
+    if (mb_strlen($message) > $maxMessageChars) {
+        throw new RuntimeException("El mensaje excede el limite permitido de {$maxMessageChars} caracteres.");
+    }
+
+    $ollama = AppServices::makeOllamaClient();
+    $coordinator = AppServices::makeChatCoordinator($ollama);
 
     $result = $coordinator->chat($mode, $message);
 

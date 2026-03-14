@@ -10,12 +10,15 @@ use ZipArchive;
 
 final class KnowledgeBase
 {
+    private const INDEX_CACHE_FILE = __DIR__ . '/../storage/cache/knowledge_index.json';
     private const SUPPORTED_EXTENSIONS = ['md', 'txt', 'csv', 'xlsx'];
     private const MAX_TABLE_ROWS = 120;
 
     public function __construct(
         private readonly string $knowledgePath,
-        private readonly int $maxChars
+        private readonly int $maxChars,
+        private readonly int $chunkChars = 1400,
+        private readonly int $maxChunks = 6
     ) {
     }
 
@@ -28,33 +31,51 @@ final class KnowledgeBase
             return [];
         }
 
-        $files = $this->getSupportedFiles();
+        $index = $this->loadIndex();
+        $files = array_map(
+            static fn (array $document): string => (string) ($document['filename'] ?? ''),
+            $index['documents'] ?? []
+        );
+
         sort($files);
 
-        return array_map(static fn (string $file): string => basename($file), $files);
+        return array_values(array_filter($files, static fn (string $item): bool => $item !== ''));
     }
 
     public function buildContext(): string
     {
-        $files = $this->getSupportedFiles();
+        return $this->buildContextForQuestion('', []);
+    }
 
-        if ($files === []) {
+    /**
+     * @param array<int, array{role?: string, content?: string}> $history
+     */
+    public function buildContextForQuestion(string $question, array $history = []): string
+    {
+        $index = $this->loadIndex();
+        $documents = $index['documents'] ?? [];
+
+        if ($documents === []) {
             return '';
         }
 
-        sort($files);
+        $query = trim($question);
+
+        foreach (array_slice($history, -4) as $item) {
+            $query .= ' ' . trim((string) ($item['content'] ?? ''));
+        }
+
+        $chunks = $this->selectRelevantChunks($documents, $query);
+
+        if ($chunks === []) {
+            return '';
+        }
 
         $buffer = [];
         $currentLength = 0;
 
-        foreach ($files as $file) {
-            $contents = trim($this->extractContents($file));
-
-            if ($contents === '') {
-                continue;
-            }
-
-            $entry = "Documento: " . basename($file) . PHP_EOL . $contents;
+        foreach ($chunks as $chunk) {
+            $entry = "Documento: {$chunk['filename']}\nFragmento {$chunk['chunkIndex']}\n{$chunk['text']}";
             $entryLength = mb_strlen($entry);
 
             if ($currentLength + $entryLength > $this->maxChars) {
@@ -72,6 +93,262 @@ final class KnowledgeBase
         }
 
         return trim(implode(PHP_EOL . PHP_EOL, $buffer));
+    }
+
+    /**
+     * @return array{manifest: array<int, array<string, int|string>>, documents: array<int, array<string, mixed>>}
+     */
+    private function loadIndex(): array
+    {
+        $manifest = $this->buildManifest();
+
+        if ($manifest === []) {
+            return ['manifest' => [], 'documents' => []];
+        }
+
+        $cached = $this->readIndexCache();
+
+        if (($cached['manifest'] ?? null) === $manifest && is_array($cached['documents'] ?? null)) {
+            return $cached;
+        }
+
+        $documents = [];
+
+        foreach ($manifest as $item) {
+            $path = (string) $item['path'];
+
+            try {
+                $contents = trim($this->extractContents($path));
+            } catch (RuntimeException) {
+                continue;
+            }
+
+            if ($contents === '') {
+                continue;
+            }
+
+            $documents[] = [
+                'path' => $path,
+                'filename' => basename($path),
+                'mtime' => (int) $item['mtime'],
+                'size' => (int) $item['size'],
+                'chunks' => $this->chunkText($contents),
+            ];
+        }
+
+        $index = [
+            'manifest' => $manifest,
+            'documents' => $documents,
+        ];
+
+        $this->writeIndexCache($index);
+
+        return $index;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $documents
+     * @return array<int, array{filename: string, chunkIndex: int, text: string}>
+     */
+    private function selectRelevantChunks(array $documents, string $query): array
+    {
+        $queryTokens = $this->tokenize($query);
+        $chunks = [];
+
+        foreach ($documents as $document) {
+            foreach (($document['chunks'] ?? []) as $chunk) {
+                $text = trim((string) ($chunk['text'] ?? ''));
+
+                if ($text === '') {
+                    continue;
+                }
+
+                $score = $queryTokens === []
+                    ? max(1, 100 - (int) ($chunk['index'] ?? 0))
+                    : $this->scoreChunk($queryTokens, (string) ($document['filename'] ?? ''), $text);
+
+                if ($score <= 0) {
+                    continue;
+                }
+
+                $chunks[] = [
+                    'filename' => (string) ($document['filename'] ?? ''),
+                    'chunkIndex' => (int) ($chunk['index'] ?? 0) + 1,
+                    'text' => $text,
+                    'score' => $score,
+                ];
+            }
+        }
+
+        usort(
+            $chunks,
+            static fn (array $left, array $right): int => [$right['score'], $left['chunkIndex']] <=> [$left['score'], $right['chunkIndex']]
+        );
+
+        $selected = array_slice($chunks, 0, max(1, $this->maxChunks));
+
+        return array_map(
+            static fn (array $item): array => [
+                'filename' => (string) $item['filename'],
+                'chunkIndex' => (int) $item['chunkIndex'],
+                'text' => (string) $item['text'],
+            ],
+            $selected
+        );
+    }
+
+    private function scoreChunk(array $queryTokens, string $filename, string $text): int
+    {
+        $score = 0;
+        $textTokens = $this->tokenize($filename . ' ' . $text);
+
+        foreach ($queryTokens as $token) {
+            if (in_array($token, $textTokens, true)) {
+                $score += 6;
+            }
+
+            if (str_contains(mb_strtolower($text), $token)) {
+                $score += 2;
+            }
+        }
+
+        return $score;
+    }
+
+    /**
+     * @return array<int, array{index: int, text: string}>
+     */
+    private function chunkText(string $text): array
+    {
+        $normalized = preg_replace("/\r\n?/", "\n", trim($text)) ?? trim($text);
+        $parts = preg_split("/\n\s*\n/", $normalized) ?: [];
+        $chunks = [];
+        $buffer = '';
+        $chunkIndex = 0;
+
+        foreach ($parts as $part) {
+            $part = trim($part);
+
+            if ($part === '') {
+                continue;
+            }
+
+            $candidate = $buffer === '' ? $part : $buffer . "\n\n" . $part;
+
+            if (mb_strlen($candidate) <= $this->chunkChars) {
+                $buffer = $candidate;
+                continue;
+            }
+
+            if ($buffer !== '') {
+                $chunks[] = [
+                    'index' => $chunkIndex++,
+                    'text' => $buffer,
+                ];
+            }
+
+            if (mb_strlen($part) <= $this->chunkChars) {
+                $buffer = $part;
+                continue;
+            }
+
+            $offset = 0;
+            $length = mb_strlen($part);
+
+            while ($offset < $length) {
+                $slice = trim((string) mb_substr($part, $offset, $this->chunkChars));
+
+                if ($slice !== '') {
+                    $chunks[] = [
+                        'index' => $chunkIndex++,
+                        'text' => $slice,
+                    ];
+                }
+
+                $offset += $this->chunkChars;
+            }
+
+            $buffer = '';
+        }
+
+        if ($buffer !== '') {
+            $chunks[] = [
+                'index' => $chunkIndex,
+                'text' => $buffer,
+            ];
+        }
+
+        return $chunks;
+    }
+
+    /**
+     * @return array<int, array{path: string, mtime: int, size: int}>
+     */
+    private function buildManifest(): array
+    {
+        $files = $this->getSupportedFiles();
+        sort($files);
+        $manifest = [];
+
+        foreach ($files as $file) {
+            $mtime = filemtime($file);
+            $size = filesize($file);
+
+            if ($mtime === false || $size === false) {
+                continue;
+            }
+
+            $manifest[] = [
+                'path' => $file,
+                'mtime' => $mtime,
+                'size' => $size,
+            ];
+        }
+
+        return $manifest;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readIndexCache(): array
+    {
+        if (!is_file(self::INDEX_CACHE_FILE)) {
+            return [];
+        }
+
+        $contents = file_get_contents(self::INDEX_CACHE_FILE);
+
+        if (!is_string($contents) || trim($contents) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($contents, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * @param array<string, mixed> $index
+     */
+    private function writeIndexCache(array $index): void
+    {
+        $directory = dirname(self::INDEX_CACHE_FILE);
+
+        if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
+            return;
+        }
+
+        $payload = json_encode($index, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        $tempFile = self::INDEX_CACHE_FILE . '.tmp';
+
+        file_put_contents($tempFile, $payload, LOCK_EX);
+
+        if (is_file(self::INDEX_CACHE_FILE)) {
+            unlink(self::INDEX_CACHE_FILE);
+        }
+
+        rename($tempFile, self::INDEX_CACHE_FILE);
     }
 
     /**
@@ -415,5 +692,19 @@ final class KnowledgeBase
             'b' => $rawValue === '1' ? 'true' : 'false',
             default => $rawValue,
         };
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function tokenize(string $text): array
+    {
+        $normalized = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', mb_strtolower($text));
+        $normalized = is_string($normalized) ? $normalized : mb_strtolower($text);
+        $normalized = preg_replace('/[^a-z0-9_]+/', ' ', $normalized) ?? $normalized;
+        $parts = preg_split('/\s+/', trim($normalized)) ?: [];
+        $parts = array_values(array_filter($parts, static fn (string $part): bool => strlen($part) >= 3));
+
+        return array_values(array_unique($parts));
     }
 }
