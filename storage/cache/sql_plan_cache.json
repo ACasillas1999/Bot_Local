@@ -13,5 +13,10 @@
         "action": "query",
         "sql": "SELECT e.nombre, e.apellido, e.salario_mensual AS sueldo\nFROM empleados e\nJOIN departamentos d ON e.departamento_id = d.id\nWHERE d.nombre = 'Tecnología';",
         "answer": "Consulta preparada para obtener el nombre y sueldo de los empleados del departamento de Tecnología."
+    },
+    "e003223d933c0e888969d07e2dc224e5ad786780": {
+        "action": "query",
+        "sql": "SELECT AVG(e.salario_mensual) AS promedio_sueldo\nFROM empleados e\nJOIN departamentos d ON e.departamento_id = d.id\nWHERE LOWER(d.nombre) LIKE '%tecnologia%';",
+        "answer": ""
     }
 }
